@@ -61,7 +61,7 @@ Schema 5 より導入された `intent_invocation_catalog` は、サードパー
 
 2. **スキーマファイルを使用して JSON レポートを検証:**
    ```bash
-   ajv validate -s docs/schemas/intent-surface-report.schema.v5.json -r docs/schemas/intent-invocation-catalog.schema.v1.json -d path/to/your_report.json
+   ajv validate -s docs/schemas/android-intent-surface-report.schema.v5.json -r docs/schemas/intent-invocation-catalog.schema.v1.json -d path/to/your_report.json
    ```
    *(`-r` フラグで参照先のカタログスキーマを同時に読み込みます。レポートが正しい場合は `YOUR_REPORT_FILE.json valid` と出力されます)*
 

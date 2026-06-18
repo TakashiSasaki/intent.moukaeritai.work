@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import java.io.File
 
 class IntentSurfaceReportSemanticValidatorTest {
 
@@ -291,5 +292,64 @@ class IntentSurfaceReportSemanticValidatorTest {
         val clazz = IntentSurfaceReport::class.java
         val fields = clazz.declaredFields.map { it.name }
         assertFalse("schema_family_id should not be present in IntentSurfaceReport", fields.contains("schema_family_id"))
+    }
+
+    private fun findFixtureFile(name: String): File {
+        val candidatesPaths = listOf(
+            "docs/fixtures/$name",
+            "../docs/fixtures/$name",
+            "app/docs/fixtures/$name",
+            "../app/docs/fixtures/$name",
+            "applet/docs/fixtures/$name",
+            "../applet/docs/fixtures/$name",
+            "src/test/resources/$name",
+            "app/src/test/resources/$name"
+        )
+        for (p in candidatesPaths) {
+            val f = File(p)
+            if (f.exists()) return f
+            // Try relative to project root or subdirs
+            val absoluteRoot = File(".").absoluteFile
+            var curr: File? = absoluteRoot
+            while (curr != null) {
+                val fInCurr = File(curr, p)
+                if (fInCurr.exists()) return fInCurr
+                val fInCurrDocs = File(curr, "docs/fixtures/$name")
+                if (fInCurrDocs.exists()) return fInCurrDocs
+                curr = curr.parentFile
+            }
+        }
+        throw java.io.FileNotFoundException("Could not find fixture: $name. Current dir is: " + File(".").absolutePath)
+    }
+
+    @Test
+    fun testLoadAndValidateSyntheticValidFixture() {
+        val file = findFixtureFile("android-intent-surface-report.v5.minimal.valid.json")
+        val jsonStr = file.readText()
+        
+        val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+        val adapter = moshi.adapter(IntentSurfaceReport::class.java)
+        val report = adapter.fromJson(jsonStr)
+        
+        assertTrue("Parsing should have succeeded", report != null)
+        val validator = IntentSurfaceReportSemanticValidator()
+        val result = validator.validate(report!!)
+        assertTrue("Fixture should be semantically valid: ${result.errors.joinToString()}", result.isValid)
+    }
+
+    @Test
+    fun testLoadAndValidateSyntheticInvalidFixture() {
+        val file = findFixtureFile("android-intent-surface-report.v5.invalid.fake-uri.json")
+        val jsonStr = file.readText()
+        
+        val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+        val adapter = moshi.adapter(IntentSurfaceReport::class.java)
+        val report = adapter.fromJson(jsonStr)
+        
+        assertTrue("Parsing should have succeeded", report != null)
+        val validator = IntentSurfaceReportSemanticValidator()
+        val result = validator.validate(report!!)
+        assertFalse("Fixture should be semantically invalid", result.isValid)
+        assertTrue(result.errors.any { it.contains("cannot use fake/redacted URI placeholder") })
     }
 }

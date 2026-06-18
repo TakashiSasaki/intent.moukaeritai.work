@@ -47,7 +47,11 @@
         "installer_package_name": { "type": ["string", "null"] },
         "requested_permissions": { "type": "array", "items": { "type": "string" } },
         "granted_permissions": { "type": "array", "items": { "type": "string" } },
-        "query_all_packages_granted": { "type": "boolean" }
+        "query_all_packages_granted": { "type": "boolean" },
+        "build_time_utc": { "type": ["string", "null"] },
+        "git_commit_short": { "type": ["string", "null"] },
+        "git_commit_full": { "type": ["string", "null"] },
+        "json_report_schema_version": { "type": ["integer", "null"] }
       },
       "required": [
         "app_package_name",
@@ -152,7 +156,56 @@
         "component_not_exported_count": { "type": "integer", "minimum": 0 },
         "component_requires_permission_count": { "type": "integer", "minimum": 0 },
         "error_count": { "type": "integer", "minimum": 0 },
-        "report_duration_ms": { "type": "integer", "minimum": 0 }
+        "report_duration_ms": { "type": "integer", "minimum": 0 },
+        "invocation_mode_summary": {
+          "type": ["object", "null"],
+          "properties": {
+            "implicit_resolution_candidate_count": { "type": "integer", "minimum": 0 },
+            "package_targeted_resolvable_direct_count": { "type": "integer", "minimum": 0 },
+            "package_targeted_resolvable_via_resolver_count": { "type": "integer", "minimum": 0 },
+            "package_targeted_not_resolvable_count": { "type": "integer", "minimum": 0 },
+            "component_explicit_spec_built_count": { "type": "integer", "minimum": 0 },
+            "component_explicit_disabled_count": { "type": "integer", "minimum": 0 },
+            "component_explicit_not_exported_count": { "type": "integer", "minimum": 0 },
+            "component_explicit_requires_permission_count": { "type": "integer", "minimum": 0 },
+            "component_explicit_launch_tested_count": { "type": "integer", "minimum": 0 }
+          },
+          "required": [
+            "implicit_resolution_candidate_count",
+            "package_targeted_resolvable_direct_count",
+            "package_targeted_resolvable_via_resolver_count",
+            "package_targeted_not_resolvable_count",
+            "component_explicit_spec_built_count",
+            "component_explicit_disabled_count",
+            "component_explicit_not_exported_count",
+            "component_explicit_requires_permission_count",
+            "component_explicit_launch_tested_count"
+          ],
+          "additionalProperties": false
+        },
+        "probe_comparisons": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "same_results_between_no_category_and_default": { "type": "boolean" },
+              "same_results_between_flags_0_and_match_default_only": { "type": "boolean" },
+              "components_added_by_default_category": { "type": "array", "items": { "type": "string" } },
+              "components_removed_by_default_category": { "type": "array", "items": { "type": "string" } },
+              "components_added_by_match_default_only": { "type": "array", "items": { "type": "string" } },
+              "components_removed_by_match_default_only": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": [
+              "same_results_between_no_category_and_default",
+              "same_results_between_flags_0_and_match_default_only",
+              "components_added_by_default_category",
+              "components_removed_by_default_category",
+              "components_added_by_match_default_only",
+              "components_removed_by_match_default_only"
+            ],
+            "additionalProperties": false
+          }
+        }
       },
       "required": [
         "schema",
