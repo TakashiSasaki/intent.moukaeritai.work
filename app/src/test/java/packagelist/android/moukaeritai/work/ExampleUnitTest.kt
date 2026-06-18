@@ -1,4 +1,4 @@
-package com.example
+package packagelist.android.moukaeritai.work
 
 import org.junit.Assert.*
 import org.junit.Test

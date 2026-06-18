@@ -1,4 +1,4 @@
-package com.example
+package packagelist.android.moukaeritai.work
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -72,7 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.MyApplicationTheme
+import packagelist.android.moukaeritai.work.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -390,7 +390,7 @@ fun DiagnosticsBanner(snapshot: PackageSnapshot) {
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
@@ -406,36 +406,44 @@ fun DiagnosticsBanner(snapshot: PackageSnapshot) {
                 color = MaterialTheme.colorScheme.primary
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Left Column: OS & Engine details
-                Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text(
-                        text = "Android OS: ${snapshot.androidRelease} (API ${snapshot.androidSdkInt})",
+                        text = "App ID: ${snapshot.appPackageName}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Target SDK: API ${snapshot.targetSdkVersion}",
+                        text = "OS: ${snapshot.androidRelease} (API ${snapshot.androidSdkInt})",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                // Right Column: Flag details
-                Column(horizontalAlignment = Alignment.End) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Target SDK: API ${snapshot.targetSdkVersion}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "QUERY_ALL_PACKAGES = ",
+                            text = "query_all = ",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = snapshot.queryAllPackagesGranted.toString().uppercase(),
+                            text = snapshot.queryAllPackagesGranted.toString(),
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                             color = if (snapshot.queryAllPackagesGranted) 
                                 MaterialTheme.colorScheme.tertiary 
@@ -443,9 +451,20 @@ fun DiagnosticsBanner(snapshot: PackageSnapshot) {
                                 MaterialTheme.colorScheme.error
                         )
                     }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text(
-                        text = "Visibility: ${if (snapshot.queryAllPackagesGranted) "Broad" else "Limited"}",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                        text = "Config: ${snapshot.visibilityConfig}",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Time: ${snapshot.generatedAtIso8601.take(19)}",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

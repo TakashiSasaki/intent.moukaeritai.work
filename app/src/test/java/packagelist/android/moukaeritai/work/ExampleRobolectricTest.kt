@@ -1,4 +1,4 @@
-package com.example
+package packagelist.android.moukaeritai.work
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

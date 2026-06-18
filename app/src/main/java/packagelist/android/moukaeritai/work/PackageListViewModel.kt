@@ -1,4 +1,4 @@
-package com.example
+package packagelist.android.moukaeritai.work
 
 import android.content.Context
 import android.net.Uri
@@ -88,11 +88,12 @@ class PackageListViewModel : ViewModel() {
 
     private fun generateCsvData(snapshot: PackageSnapshot): String {
         val sb = java.lang.StringBuilder()
-        sb.append("generated_at_epoch_millis,generated_at_iso8601,app_package_name,app_version_name,android_sdk_int,android_release,target_sdk_version,query_all_packages_granted,visible_package_count,package_name\n")
+        sb.append("generated_at_epoch_millis,generated_at_iso8601,app_package_name,app_version_name,android_sdk_int,android_release,target_sdk_version,query_all_packages_granted,visibility_config,visible_package_count,package_name\n")
 
         val count = snapshot.packageNames.size
         val ver = snapshot.appVersionName ?: ""
         val queryAll = snapshot.queryAllPackagesGranted.toString()
+        val visibilityConfig = snapshot.visibilityConfig
 
         for (pkgName in snapshot.packageNames) {
             sb.append(snapshot.generatedAtEpochMillis).append(",")
@@ -103,6 +104,7 @@ class PackageListViewModel : ViewModel() {
             sb.append(escapeCsvField(snapshot.androidRelease)).append(",")
             sb.append(snapshot.targetSdkVersion).append(",")
             sb.append(queryAll).append(",")
+            sb.append(escapeCsvField(visibilityConfig)).append(",")
             sb.append(count).append(",")
             sb.append(escapeCsvField(pkgName)).append("\n")
         }

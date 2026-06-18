@@ -1,4 +1,4 @@
-package com.example
+package packagelist.android.moukaeritai.work
 
 import android.content.Context
 import android.content.pm.PackageManager
@@ -16,6 +16,7 @@ data class PackageSnapshot(
     val androidRelease: String,
     val targetSdkVersion: Int,
     val queryAllPackagesGranted: Boolean,
+    val visibilityConfig: String,
     val packageNames: List<String>
 )
 
@@ -69,6 +70,7 @@ object PackageListRepository {
             androidRelease = release,
             targetSdkVersion = targetSdk,
             queryAllPackagesGranted = queryAllPackages,
+            visibilityConfig = "baseline_no_permission_no_queries",
             packageNames = packageNames
         )
     }
