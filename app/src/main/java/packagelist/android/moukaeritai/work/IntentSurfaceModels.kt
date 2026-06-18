@@ -147,10 +147,9 @@ data class ResolveActivityResult(
 
 @JsonClass(generateAdapter = true)
 data class IntentSurfaceReport(
-    val schema: Int = 5,
+    val schema: Int = 5, // Legacy field, schema_version is the canonical integer version
     val schema_version: Int = 5,
-    val schema_id: String = "work.moukaeritai.intent-surface-report.schema.v5",
-    val report_kind: String = "moukaeritai_intent_surface",
+    val schema_id: String = "urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233",
     val run_id: String,
     val file_name: String,
     val generated_at_epoch_millis: Long,
@@ -264,8 +263,7 @@ data class ProbeComparisonSummary(
 
 @JsonClass(generateAdapter = true)
 data class SurfaceDiagnosticSummary(
-    val schema: Int,
-    val report_kind: String,
+    val schema: Int, // Legacy field, schema_version is the canonical integer version
     val run_id: String,
     val probe_family_count: Int,
     val probe_count: Int,

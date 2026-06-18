@@ -8,10 +8,6 @@
       "type": "integer",
       "enum": [1]
     },
-    "catalog_kind": {
-      "type": "string",
-      "enum": ["moukaeritai.intent_invocation_catalog"]
-    },
     "candidate_count": {
       "type": "integer",
       "minimum": 0
@@ -25,7 +21,6 @@
   },
   "required": [
     "catalog_schema_version",
-    "catalog_kind",
     "candidate_count",
     "candidates"
   ],
@@ -112,10 +107,7 @@
                   ]
                 },
                 "uri_kind": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
+                  "type": "string"
                 },
                 "scheme": {
                   "type": [
@@ -174,6 +166,18 @@
                       "UNKNOWN"
                     ]
                   },
+                  "value_source": {
+                    "type": "string"
+                  },
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "example_value_redacted": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "notes": {
                     "type": "array",
                     "items": {
@@ -184,6 +188,9 @@
                 "required": [
                   "key",
                   "value_type",
+                  "value_source",
+                  "required",
+                  "example_value_redacted",
                   "notes"
                 ],
                 "additionalProperties": false
@@ -198,24 +205,13 @@
             "flags": {
               "type": "array",
               "items": {
-                "type": "string",
-                "enum": [
-                  "FLAG_ACTIVITY_NEW_TASK",
-                  "FLAG_ACTIVITY_CLEAR_TOP",
-                  "FLAG_ACTIVITY_SINGLE_TOP"
-                ]
+                "type": "string"
               }
             },
             "grant_flags": {
               "type": "array",
               "items": {
-                "type": "string",
-                "enum": [
-                  "FLAG_GRANT_READ_URI_PERMISSION",
-                  "FLAG_GRANT_WRITE_URI_PERMISSION",
-                  "FLAG_GRANT_PERSISTABLE_URI_PERMISSION",
-                  "FLAG_GRANT_PREFIX_URI_PERMISSION"
-                ]
+                "type": "string"
               }
             },
             "runtime_requirements": {
@@ -226,35 +222,70 @@
                   "requirement_type": {
                     "type": "string",
                     "enum": [
+                      "CALLER_SUPPLIED_URI",
+                      "CALLER_SUPPLIED_TEXT",
+                      "CALLER_SUPPLIED_EXTRA",
+                      "CALLER_SUPPLIED_CLIP_DATA",
                       "GENERATED_TEMP_CONTENT_URI",
                       "USER_SELECTED_CONTENT_URI",
-                      "CALLER_SUPPLIED_CONTENT_URI",
                       "UNKNOWN_RUNTIME_VALUE"
                     ]
                   },
-                  "expected_value_type": {
-                    "type": "string",
-                    "enum": [
-                      "URI_STRING",
-                      "URI_STRING_ARRAY",
-                      "UNKNOWN"
+                  "key": {
+                    "type": [
+                      "string",
+                      "null"
                     ]
                   },
                   "required": {
                     "type": "boolean"
                   },
-                  "notes": {
+                  "expected_value_type": {
+                    "type": "string",
+                    "enum": [
+                      "URI_STRING",
+                      "STRING",
+                      "STRING_ARRAY",
+                      "BOOLEAN",
+                      "INT",
+                      "LONG",
+                      "FLOAT",
+                      "CLIP_DATA",
+                      "NONE",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "uri_kind": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "mime_type": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "grant_flags": {
                     "type": "array",
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "description": {
+                    "type": "string"
                   }
                 },
                 "required": [
                   "requirement_type",
-                  "expected_value_type",
+                  "key",
                   "required",
-                  "notes"
+                  "expected_value_type",
+                  "uri_kind",
+                  "mime_type",
+                  "grant_flags",
+                  "description"
                 ],
                 "additionalProperties": false
               }
@@ -285,9 +316,12 @@
                 "string",
                 "null"
               ]
-                },
+            },
             "implicit_probe_candidate_index": {
-              "type": "integer"
+              "type": [
+                "integer",
+                "null"
+              ]
             },
             "package_targeted_resolution_status": {
               "type": [
@@ -296,14 +330,9 @@
               ]
             },
             "component_static_assessment": {
-              "type": "string",
-              "enum": [
-                "EXPLICIT_COMPONENT_STATIC_OK",
-                "EXPLICIT_COMPONENT_DISABLED",
-                "EXPLICIT_COMPONENT_NOT_EXPORTED",
-                "EXPLICIT_COMPONENT_REQUIRES_PERMISSION",
-                "EXPLICIT_COMPONENT_MISSING",
-                "UNKNOWN"
+              "type": [
+                "string",
+                "null"
               ]
             },
             "start_activity_attempted": {
@@ -338,15 +367,7 @@
               "enum": [true]
             },
             "side_effect_level": {
-              "type": "string",
-              "enum": [
-                "UNKNOWN",
-                "MAY_OPEN_EXTERNAL_APP",
-                "MAY_SHOW_CHOOSER",
-                "MAY_REQUIRE_USER_INPUT",
-                "MAY_SEND_SHARE_DATA",
-                "MAY_MODIFY_STATE"
-              ]
+              "type": "string"
             },
             "notes": {
               "type": "array",

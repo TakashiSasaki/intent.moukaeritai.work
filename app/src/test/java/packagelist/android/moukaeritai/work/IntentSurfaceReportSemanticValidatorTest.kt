@@ -11,8 +11,7 @@ class IntentSurfaceReportSemanticValidatorTest {
         return IntentSurfaceReport(
             schema = 5,
             schema_version = 5,
-            schema_id = "work.moukaeritai.intent-surface-report.schema.v5",
-            report_kind = "moukaeritai_intent_surface",
+            schema_id = "urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233",
             run_id = "run_123",
             file_name = "report.json",
             generated_at_epoch_millis = 12345L,
@@ -24,7 +23,7 @@ class IntentSurfaceReportSemanticValidatorTest {
             probe_families = emptyList(),
             intent_surface_probes = emptyList(),
             component_surface_summary = emptyList(),
-            summary = SurfaceDiagnosticSummary(5,"test","run",0,0,0,0,0,emptyMap(),emptyMap(),emptyMap(),emptyMap(),0,0,0,0,0,0,0,0,0,null,emptyMap()),
+            summary = SurfaceDiagnosticSummary(5,"run",0,0,0,0,0,emptyMap(),emptyMap(),emptyMap(),emptyMap(),0,0,0,0,0,0,0,0,0,null,emptyMap()),
             errors = emptyList(),
             events = emptyList()
         )
@@ -204,5 +203,36 @@ class IntentSurfaceReportSemanticValidatorTest {
         assertTrue(res.errors.any { it.contains(candId) })
         // Ensure no literal "${candidate.candidate_id}" is emitted
         assertFalse(res.errors.any { it.contains("\${candidate.candidate_id}") })
+    }
+
+    @Test
+    fun testValidatorRejectsOldSchemaId() {
+        val validator = IntentSurfaceReportSemanticValidator()
+        val catalog = IntentInvocationCatalog(candidate_count = 0, candidates = emptyList())
+        val report = createMinimalReport(catalog).copy(schema_id = "work.moukaeritai.intent-surface-report.schema.v5")
+        val result = validator.validate(report)
+        assertFalse(result.isValid)
+        assertTrue(result.errors.any { it.contains("schema_id must be urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233") })
+    }
+
+    @Test
+    fun testReportKindIsAbsent() {
+        val clazz = IntentSurfaceReport::class.java
+        val fields = clazz.declaredFields.map { it.name }
+        assertFalse("report_kind should not be present in IntentSurfaceReport", fields.contains("report_kind"))
+    }
+
+    @Test
+    fun testSchemaSemverIsAbsent() {
+        val clazz = IntentSurfaceReport::class.java
+        val fields = clazz.declaredFields.map { it.name }
+        assertFalse("schema_semver should not be present in IntentSurfaceReport", fields.contains("schema_semver"))
+    }
+
+    @Test
+    fun testSchemaFamilyIdIsAbsent() {
+        val clazz = IntentSurfaceReport::class.java
+        val fields = clazz.declaredFields.map { it.name }
+        assertFalse("schema_family_id should not be present in IntentSurfaceReport", fields.contains("schema_family_id"))
     }
 }

@@ -152,7 +152,6 @@ class IntentInvocationCatalogBuilder {
         
         return IntentInvocationCatalog(
             catalog_schema_version = 1,
-            catalog_kind = "moukaeritai.intent_invocation_catalog",
             candidate_count = candidates.size,
             candidates = candidates
         )

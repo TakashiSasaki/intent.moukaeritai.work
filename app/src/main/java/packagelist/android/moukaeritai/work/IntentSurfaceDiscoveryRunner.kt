@@ -667,7 +667,6 @@ class IntentSurfaceDiscoveryRunner(private val context: Context) {
 
         val summary = SurfaceDiagnosticSummary(
             schema = 5,
-            report_kind = "moukaeritai_intent_surface",
             run_id = runId,
             probe_family_count = families.size,
             probe_count = probes.size,
@@ -706,8 +705,7 @@ class IntentSurfaceDiscoveryRunner(private val context: Context) {
         return IntentSurfaceReport(
             schema = 5,
             schema_version = 5,
-            schema_id = "work.moukaeritai.intent-surface-report.schema.v5",
-            report_kind = "moukaeritai_intent_surface",
+            schema_id = "urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233",
             run_id = runId,
             file_name = fileName,
             generated_at_epoch_millis = System.currentTimeMillis(),

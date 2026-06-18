@@ -40,7 +40,7 @@ class ExampleUnitTest {
           intent_surface_probes = emptyList(),
           component_surface_summary = emptyList(),
           summary = SurfaceDiagnosticSummary(
-              schema = 4, report_kind = "test", run_id = "test",
+              schema = 5, run_id = "test",
               probe_family_count = 0, probe_count = 0, total_candidate_rows = 0,
               unique_component_count = 0, unique_package_count = 0, candidates_by_family = emptyMap(),
               candidates_by_probe = emptyMap(), disabled_candidates_by_family = emptyMap(),

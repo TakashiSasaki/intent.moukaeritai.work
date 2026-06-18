@@ -9,17 +9,14 @@ class IntentSurfaceReportSemanticValidator {
 
         if (report.schema != 5) errors.add("schema must be 5")
         if (report.schema_version != 5) errors.add("schema_version must be 5")
-        if (report.schema_id != "work.moukaeritai.intent-surface-report.schema.v5") {
-            errors.add("schema_id must be work.moukaeritai.intent-surface-report.schema.v5")
+        if (report.schema_id != "urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233") {
+            errors.add("schema_id must be urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233")
         }
 
         val catalog = report.intent_invocation_catalog
         if (catalog == null) {
             errors.add("intent_invocation_catalog is missing")
         } else {
-            if (catalog.catalog_kind != "moukaeritai.intent_invocation_catalog") {
-                errors.add("catalog_kind must be moukaeritai.intent_invocation_catalog")
-            }
             if (catalog.catalog_schema_version != 1) {
                 errors.add("catalog_schema_version must be 1")
             }

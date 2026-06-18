@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233",
+  "title": "Android Intent Surface Report schema v5",
+  "description": "Schema for Android Intent surface discovery reports.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "integer",
+      "enum": [5],
+      "description": "Legacy representation of schema. Kept for backwards compatibility."
+    },
+    "schema_version": {
+      "type": "integer",
+      "enum": [5],
+      "description": "The canonical integer schema version."
+    },
+    "schema_id": {
+      "type": "string",
+      "const": "urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233",
+      "description": "The unique canonical URN UUID identifying this version of the scheme."
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "generated_at_epoch_millis": {
+      "type": "integer"
+    },
+    "generated_at_utc": {
+      "type": "string"
+    },
+    "app": {
+      "type": "object",
+      "properties": {
+        "app_package_name": { "type": "string" },
+        "app_version_name": { "type": "string" },
+        "app_version_code": { "type": "integer" },
+        "target_sdk_version": { "type": "integer" },
+        "min_sdk_version": { "type": "integer" },
+        "build_type": { "type": ["string", "null"] },
+        "debug_build": { "type": "boolean" },
+        "installer_package_name": { "type": ["string", "null"] },
+        "requested_permissions": { "type": "array", "items": { "type": "string" } },
+        "granted_permissions": { "type": "array", "items": { "type": "string" } },
+        "query_all_packages_granted": { "type": "boolean" }
+      },
+      "required": [
+        "app_package_name",
+        "app_version_name",
+        "app_version_code",
+        "target_sdk_version",
+        "min_sdk_version",
+        "debug_build",
+        "installer_package_name",
+        "requested_permissions",
+        "granted_permissions",
+        "query_all_packages_granted"
+      ]
+    },
+    "device": {
+      "type": "object",
+      "properties": {
+        "android_sdk_int": { "type": "integer" },
+        "android_release": { "type": "string" },
+        "manufacturer": { "type": "string" },
+        "brand": { "type": "string" },
+        "model": { "type": "string" },
+        "device": { "type": "string" },
+        "product": { "type": "string" },
+        "supported_abis": { "type": "array", "items": { "type": "string" } },
+        "locale": { "type": "string" },
+        "time_zone": { "type": "string" },
+        "screen_width_px": { "type": "integer" },
+        "screen_height_px": { "type": "integer" },
+        "density_dpi": { "type": "integer" }
+      },
+      "required": [
+        "android_sdk_int",
+        "android_release",
+        "manufacturer",
+        "brand",
+        "model",
+        "device",
+        "product",
+        "supported_abis",
+        "locale",
+        "time_zone",
+        "screen_width_px",
+        "screen_height_px",
+        "density_dpi"
+      ]
+    },
+    "package_visibility": {
+      "type": "object",
+      "properties": {
+        "visibility_config": { "type": "string" },
+        "query_all_packages_granted": { "type": "boolean" },
+        "can_query_all_packages_by_permission_check": { "type": "boolean" },
+        "requested_permissions": { "type": "array", "items": { "type": "string" } },
+        "declared_intent_queries_hardcoded_description": { "type": "string" }
+      },
+      "required": [
+        "visibility_config",
+        "query_all_packages_granted",
+        "can_query_all_packages_by_permission_check",
+        "requested_permissions",
+        "declared_intent_queries_hardcoded_description"
+      ]
+    },
+    "intent_invocation_catalog": {
+      "type": ["object", "null"],
+      "$ref": "intent-invocation-catalog.schema.v1.json"
+    },
+    "probe_families": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "intent_surface_probes": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "component_surface_summary": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "schema": { "type": "integer" },
+        "run_id": { "type": "string" },
+        "probe_family_count": { "type": "integer" },
+        "probe_count": { "type": "integer" },
+        "total_candidate_rows": { "type": "integer" },
+        "unique_component_count": { "type": "integer" },
+        "unique_package_count": { "type": "integer" },
+        "candidates_by_family": { "type": "object" },
+        "candidates_by_probe": { "type": "object" },
+        "disabled_candidates_by_family": { "type": "object" },
+        "unique_components_by_family": { "type": "object" },
+        "package_target_resolvable_direct_count": { "type": "integer" },
+        "package_target_resolvable_via_resolver_count": { "type": "integer" },
+        "package_target_not_resolvable_count": { "type": "integer" },
+        "component_spec_built_count": { "type": "integer" },
+        "component_disabled_count": { "type": "integer" },
+        "component_not_exported_count": { "type": "integer" },
+        "component_requires_permission_count": { "type": "integer" },
+        "error_count": { "type": "integer" },
+        "report_duration_ms": { "type": "integer" }
+      },
+      "required": [
+        "schema",
+        "run_id",
+        "probe_family_count",
+        "probe_count",
+        "total_candidate_rows",
+        "unique_component_count",
+        "unique_package_count",
+        "candidates_by_family",
+        "candidates_by_probe",
+        "disabled_candidates_by_family",
+        "unique_components_by_family",
+        "package_target_resolvable_direct_count",
+        "package_target_resolvable_via_resolver_count",
+        "package_target_not_resolvable_count",
+        "component_spec_built_count",
+        "component_disabled_count",
+        "component_not_exported_count",
+        "component_requires_permission_count",
+        "error_count",
+        "report_duration_ms"
+      ]
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "events": {
+      "type": "array",
+      "items": { "type": "object" }
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "schema_id",
+    "run_id",
+    "file_name",
+    "generated_at_epoch_millis",
+    "generated_at_utc",
+    "app",
+    "device",
+    "package_visibility",
+    "intent_invocation_catalog",
+    "probe_families",
+    "intent_surface_probes",
+    "component_surface_summary",
+    "summary",
+    "errors",
+    "events"
+  ],
+  "additionalProperties": false
+}

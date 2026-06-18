@@ -6,7 +6,7 @@ A non-destructive Intent surface discovery and export tool for Android.
 This app discovers which activities in other apps are visible and potentially callable through Intents. It builds a diagnostic report representing this "surface" and exports it as an exchangeable, validator-checkable JSON document.
 
 ## Schema Versioning
-- **Current JSON Schema**: V5 (`intent-surface-report.schema.v5`)
+- **Current JSON Schema**: V5 (`android-intent-surface-report.schema.v5.json` / `urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233`)
 - **JSON Validation**: The app enforces strict Kotlin semantic validation prior to generating exports, checking Android-specific consistency constraints.
 - **Consumer Artifacts**: The generated report features the `intent_invocation_catalog`, which is the preferred consumer-facing section for launcher-like apps.
 

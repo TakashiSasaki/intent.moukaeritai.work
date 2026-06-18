@@ -103,7 +103,6 @@ object CatalogConstants {
 @JsonClass(generateAdapter = true)
 data class IntentInvocationCatalog(
     val catalog_schema_version: Int = 1,
-    val catalog_kind: String = "moukaeritai.intent_invocation_catalog",
     val candidate_count: Int,
     val candidates: List<IntentInvocationCandidate>
 )
