@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "work.moukaeritai.intent-invocation-catalog.schema.v1",
+  "type": "object",
+  "properties": {
+    "catalog_schema_version": { "type": "integer" },
+    "catalog_kind": { "type": "string" },
+    "candidate_count": { "type": "integer" },
+    "candidates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/IntentInvocationCandidate" }
+    }
+  },
+  "required": ["catalog_schema_version", "catalog_kind", "candidate_count", "candidates"],
+  "$defs": {
+    "IntentInvocationCandidate": {
+      "type": "object",
+      "properties": {
+        "candidate_id": { "type": "string" },
+        "source_probe_id": { "type": "string" },
+        "source_family": { "type": "string" },
+        "display_label": { "type": "string" },
+        "target": {
+          "type": "object",
+          "properties": {
+            "package_name": { "type": "string" },
+            "activity_name": { "type": "string" },
+            "component_name": { "type": "string" }
+          },
+          "required": ["package_name", "activity_name", "component_name"]
+        },
+        "intent_recipe": {
+          "type": "object",
+          "properties": {
+            "targeting_mode": { "type": "string" },
+            "construction_api": { "type": "string" },
+            "action": { "type": ["string", "null"] },
+            "data": {
+              "type": "object",
+              "properties": {
+                "set_api": { "enum": ["setData", "setType", "setDataAndType", "none"] }
+              },
+              "required": ["set_api"]
+            }
+          },
+          "required": ["targeting_mode", "construction_api", "data"]
+        },
+        "evidence": {
+          "type": "object",
+          "properties": {
+            "start_activity_attempted": { "enum": [false] },
+            "launch_result": { "enum": ["START_ACTIVITY_NOT_TESTED"] }
+          },
+          "required": ["start_activity_attempted", "launch_result"]
+        },
+        "safety": {
+          "type": "object",
+          "properties": {
+            "auto_launch_allowed": { "enum": [false] }
+          },
+          "required": ["auto_launch_allowed"]
+        }
+      },
+      "required": ["candidate_id", "target", "intent_recipe", "evidence", "safety"]
+    }
+  }
+}

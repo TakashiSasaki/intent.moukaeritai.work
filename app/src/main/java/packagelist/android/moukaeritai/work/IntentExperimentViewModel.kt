@@ -1,298 +1,244 @@
 package packagelist.android.moukaeritai.work
 
-import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.security.MessageDigest
+import kotlinx.coroutines.withContext
+import java.io.File
+
+enum class ExportStatus {
+    IDLE,
+    RUNNING,
+    READY,
+    INTERNAL_SAVED,
+    EXPORTING,
+    EXPORTED,
+    FAILED
+}
+
+data class ExportState(
+    val status: ExportStatus = ExportStatus.IDLE,
+    val progressStage: String = "Idle",
+    val fileName: String? = null,
+    val internalPath: String? = null,
+    val jsonByteSize: Long = 0,
+    val savedAtTimestamp: Long? = null,
+    val internalSaveSuccess: Boolean = false,
+    val externalExportSuccess: Boolean = false,
+    val lastError: String? = null,
+    val summaryMetrics: SurfaceDiagnosticSummary? = null,
+    val validationStatus: String = "NOT_RUN",
+    val validationErrorCount: Int = 0,
+    val validationErrorSummary: String? = null,
+    val catalogCandidateCount: Int = 0,
+    val schemaVersion: Int = 5,
+    val isInternalFileAvailable: Boolean = false
+)
 
 class IntentExperimentViewModel : ViewModel() {
-    private val repo = IntentExperimentRepository()
+    private val _state = MutableStateFlow(ExportState())
+    val state: StateFlow<ExportState> = _state.asStateFlow()
 
-    // 1. Core Experiment Spec State
-    private val _spec = MutableStateFlow(createDefaultSpec(IntentTemplateId.VIEW_HTTPS_URL))
-    val spec: StateFlow<IntentExperimentSpec> = _spec.asStateFlow()
+    private var reportJson: String? = null
 
-    // 2. Resolved Candidates State
-    private val _candidates = MutableStateFlow<List<ResolvedActivityCandidate>>(emptyList())
-    val candidates: StateFlow<List<ResolvedActivityCandidate>> = _candidates.asStateFlow()
+    private val moshi = Moshi.Builder()
+        .addLast(KotlinJsonAdapterFactory())
+        .build()
+    private val reportAdapter = moshi.adapter(IntentSurfaceReport::class.java).indent("  ")
 
-    // 3. Launch Test Records State
-    private val _launchTests = MutableStateFlow<List<LaunchTestRecord>>(
-        listOf(
-            LaunchTestRecord(TargetingMode.IMPLICIT, null, null, LaunchStatus.NOT_TESTED, null, null),
-            LaunchTestRecord(TargetingMode.PACKAGE_TARGETED, null, null, LaunchStatus.NOT_TESTED, null, null),
-            LaunchTestRecord(TargetingMode.COMPONENT_EXPLICIT, null, null, LaunchStatus.NOT_TESTED, null, null)
-        )
-    )
-    val launchTests: StateFlow<List<LaunchTestRecord>> = _launchTests.asStateFlow()
-
-    // 4. Selected Candidate State for Detail Screen
-    private val _selectedCandidate = MutableStateFlow<ResolvedActivityCandidate?>(null)
-    val selectedCandidate: StateFlow<ResolvedActivityCandidate?> = _selectedCandidate.asStateFlow()
-
-    // 5. System Messages / Exports State
-    private val _exportMessage = MutableStateFlow<String?>(null)
-    val exportMessage: StateFlow<String?> = _exportMessage.asStateFlow()
-
-    // Status State
-    private val _status = MutableStateFlow("Idle")
-    val status: StateFlow<String> = _status.asStateFlow()
-
-    private val _logOutput = MutableStateFlow<List<String>>(emptyList())
-    val logOutput: StateFlow<List<String>> = _logOutput.asStateFlow()
-
-    private var hasAutoRunStarted = false
-    private var isRunning = false
-    
-    fun scheduleAutoRun(context: Context) {
-        if (hasAutoRunStarted) return
-        hasAutoRunStarted = true
-        _status.value = "Waiting to run diagnostics..."
-        viewModelScope.launch {
-            delay(2000)
-            if (!isRunning) {
-                runDiagnostics(context)
-            }
-        }
-    }
-
-    fun runDiagnostics(context: Context) {
-        if (isRunning) return
-        isRunning = true
-        _logOutput.value = emptyList()
-        val runId = java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", java.util.Locale.US).format(java.util.Date()) + "-" + (100000..999999).random()
-        _status.value = "Running: $runId"
-        viewModelScope.launch {
-            try {
-                repo.runDiagnostics(context, runId) { line ->
-                    _logOutput.value = _logOutput.value + line
-                }
-                _status.value = "Completed: $runId"
-            } catch (e: Exception) {
-                _status.value = "Failed: $runId"
-                Log.e("IntentExperiment", "Diagnostic run failed", e)
-            } finally {
-                isRunning = false
-            }
-        }
-    }
-
-    fun selectTemplate(templateId: IntentTemplateId) {
-        _spec.value = createDefaultSpec(templateId)
-        _selectedCandidate.value = null
-        _candidates.value = emptyList()
-        // Reset launch records
-        _launchTests.value = listOf(
-            LaunchTestRecord(TargetingMode.IMPLICIT, null, null, LaunchStatus.NOT_TESTED, null, null),
-            LaunchTestRecord(TargetingMode.PACKAGE_TARGETED, null, null, LaunchStatus.NOT_TESTED, null, null),
-            LaunchTestRecord(TargetingMode.COMPONENT_EXPLICIT, null, null, LaunchStatus.NOT_TESTED, null, null)
-        )
-    }
-
-    fun setTargetingMode(mode: TargetingMode) {
-        _spec.value = _spec.value.copy(targetingMode = mode)
-    }
-
-    fun selectCandidate(candidate: ResolvedActivityCandidate) {
-        _selectedCandidate.value = candidate
-        _spec.value = _spec.value.copy(
-            targetPackageName = candidate.packageName,
-            targetActivityName = candidate.activityName
-        )
+    fun runDiagnostics(context: Context, andSave: Boolean, onPromptSave: ((String) -> Unit)? = null) {
+        val currentState = _state.value
+        if (currentState.status == ExportStatus.RUNNING || currentState.status == ExportStatus.EXPORTING) return
         
-        // Dynamic update to package targeting lists
-        updateLaunchTargetSpecs(candidate.packageName, candidate.activityName)
-    }
-
-    private fun updateLaunchTargetSpecs(pkg: String, activity: String) {
-        val currentList = _launchTests.value
-        _launchTests.value = currentList.map { record ->
-            when (record.mode) {
-                TargetingMode.PACKAGE_TARGETED -> record.copy(targetPackageName = pkg, targetActivityName = null)
-                TargetingMode.COMPONENT_EXPLICIT -> record.copy(targetPackageName = pkg, targetActivityName = activity)
-                else -> record
-            }
+        _state.update { 
+            ExportState(
+                status = ExportStatus.RUNNING,
+                progressStage = "Starting diagnostics..."
+            )
         }
-    }
+        reportJson = null
 
-    fun resolve(context: Context) {
-        viewModelScope.launch {
+        val datetimePart = java.text.SimpleDateFormat("yyyyMMdd-HHmmss'Z'", java.util.Locale.US).apply { 
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }.format(java.util.Date())
+        val runIdShort = (10000..99999).random().toString()
+        val runId = "$datetimePart-$runIdShort"
+
+        val runner = IntentSurfaceDiscoveryRunner(context.applicationContext)
+        
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                val resolved = repo.resolveCandidates(context, _spec.value)
-                _candidates.value = resolved
-                if (resolved.isNotEmpty() && _selectedCandidate.value == null) {
-                    // Preselect first candidate as convenience
-                    selectCandidate(resolved[0])
+                val slug = Build.DEVICE.replace(Regex("[^a-zA-Z0-9]"), "-").lowercase()
+                val fName = "MOUKAERITAI_INTENT_SURFACE__${datetimePart}__sdk${Build.VERSION.SDK_INT}__${slug}__${runIdShort}.json"
+                _state.update { it.copy(fileName = fName) }
+
+                val report = runner.runDiscovery(runId, fName) { stage ->
+                    _state.update { it.copy(progressStage = stage) }
+                }
+
+                _state.update { it.copy(progressStage = "Semantic Validation...") }
+                val validator = IntentSurfaceReportSemanticValidator()
+                val validationResult = validator.validate(report)
+                
+                val catalogCount = report.intent_invocation_catalog?.candidate_count ?: 0
+
+                _state.update { it.copy(progressStage = "Formatting JSON...") }
+                val jsonStr = reportAdapter.toJson(report)
+                val jsonBytes = jsonStr.toByteArray(Charsets.UTF_8)
+                reportJson = jsonStr
+                
+                val valStatusStr = if (validationResult.isValid) "VALID" else "INVALID"
+
+                if (!validationResult.isValid) {
+                    _state.update { 
+                        it.copy(
+                            status = ExportStatus.FAILED,
+                            lastError = "Validation Failed: " + validationResult.errors.firstOrNull(),
+                            progressStage = "Failed during semantic validation.",
+                            validationStatus = valStatusStr,
+                            validationErrorCount = validationResult.errors.size,
+                            validationErrorSummary = validationResult.errors.joinToString("\n"),
+                            catalogCandidateCount = catalogCount,
+                            schemaVersion = report.schema
+                        )
+                    }
+                    return@launch
+                }
+
+                // INTERNAL SAVE - Requirement 1
+                try {
+                    val dir = File(context.filesDir, "intent_surface_reports")
+                    if (!dir.exists()) dir.mkdirs()
+                    val file = File(dir, fName)
+                    file.writeBytes(jsonBytes)
+                    
+                    _state.update { 
+                        it.copy(
+                            status = ExportStatus.INTERNAL_SAVED,
+                            progressStage = "Saved internally.",
+                            internalPath = file.absolutePath,
+                            jsonByteSize = jsonBytes.size.toLong(),
+                            savedAtTimestamp = System.currentTimeMillis(),
+                            internalSaveSuccess = true,
+                            isInternalFileAvailable = true,
+                            summaryMetrics = report.summary,
+                            validationStatus = valStatusStr,
+                            validationErrorCount = validationResult.errors.size,
+                            validationErrorSummary = if (validationResult.isValid) null else validationResult.errors.joinToString("\n"),
+                            catalogCandidateCount = catalogCount,
+                            schemaVersion = report.schema
+                        )
+                    }
+                    if (andSave) {
+                        withContext(Dispatchers.Main) {
+                            onPromptSave?.invoke(fName)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("Diagnostics", "Internal save failed", e)
+                    _state.update {
+                        it.copy(
+                            status = ExportStatus.FAILED,
+                            lastError = "Internal Save Error: ${e.message}",
+                            progressStage = "Failed to save internally.",
+                            jsonByteSize = jsonBytes.size.toLong(),
+                            internalSaveSuccess = false,
+                            isInternalFileAvailable = false,
+                            summaryMetrics = report.summary,
+                            validationStatus = valStatusStr,
+                            validationErrorCount = validationResult.errors.size,
+                            validationErrorSummary = if (validationResult.isValid) null else validationResult.errors.joinToString("\n"),
+                            catalogCandidateCount = catalogCount,
+                            schemaVersion = report.schema
+                        )
+                    }
                 }
             } catch (e: Exception) {
-                Log.e("IntentExperimentVM", "Failed to resolve candidates", e)
+                Log.e("Diagnostics", "Run failed", e)
+                _state.update { 
+                    it.copy(
+                        status = ExportStatus.FAILED,
+                        lastError = "Error: ${e.message}",
+                        progressStage = "Failed during generation."
+                    )
+                }
             }
         }
     }
 
-    fun runLaunchTest(context: Context, mode: TargetingMode) {
-        val testSpec = _spec.value.copy(
-            targetingMode = mode,
-            targetPackageName = if (mode == TargetingMode.IMPLICIT) null else _spec.value.targetPackageName,
-            targetActivityName = if (mode == TargetingMode.COMPONENT_EXPLICIT) _spec.value.targetActivityName else null
-        )
-
-        val intent = repo.buildIntent(testSpec)
-        // Add new task flag so we can trigger from Application / Activity context reliably
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-        var status = LaunchStatus.STARTED
-        var errClass: String? = null
-        var errMsg: String? = null
-
-        try {
-            context.startActivity(intent)
-        } catch (e: ActivityNotFoundException) {
-            status = LaunchStatus.ACTIVITY_NOT_FOUND
-            errClass = e.javaClass.simpleName
-            errMsg = e.message ?: "No Activity found to handle Intent"
-        } catch (e: SecurityException) {
-            status = LaunchStatus.SECURITY_EXCEPTION
-            errClass = e.javaClass.simpleName
-            errMsg = e.message ?: "Permission verification/Exported validation failed"
-        } catch (e: Exception) {
-            status = LaunchStatus.OTHER_EXCEPTION
-            errClass = e.javaClass.simpleName
-            errMsg = e.message ?: "An unexpected error occurred"
+    fun exportLastInternalReportToUri(context: Context, uri: Uri) {
+        val path = _state.value.internalPath
+        if (path == null) {
+             _state.update { 
+                 it.copy(status = ExportStatus.FAILED, lastError = "No internal file path available", progressStage = "Failed to export.") 
+             }
+             return
         }
-
-        // Update the specific record
-        _launchTests.value = _launchTests.value.map { record ->
-            if (record.mode == mode) {
-                LaunchTestRecord(
-                    mode = mode,
-                    targetPackageName = testSpec.targetPackageName,
-                    targetActivityName = testSpec.targetActivityName,
-                    status = status,
-                    errorClass = errClass,
-                    errorMessage = errMsg
-                )
-            } else {
-                record
+        val file = File(path)
+        if (!file.exists()) {
+             _state.update { 
+                 it.copy(status = ExportStatus.FAILED, lastError = "Internal save file not found", progressStage = "Failed to export.") 
+             }
+             return
+        }
+        
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.update { it.copy(status = ExportStatus.EXPORTING, progressStage = "Saving to file...") }
+            try {
+                val outputStream = context.contentResolver.openOutputStream(uri)
+                if (outputStream == null) {
+                    _state.update { 
+                        it.copy(
+                            status = ExportStatus.FAILED,
+                            lastError = "Save Error: Cannot open output stream",
+                            progressStage = "Failed to write external file.",
+                            externalExportSuccess = false
+                        )
+                    }
+                    return@launch
+                }
+                
+                outputStream.use { out ->
+                    file.inputStream().use { input ->
+                        input.copyTo(out)
+                    }
+                }
+                
+                _state.update { 
+                    it.copy(
+                        status = ExportStatus.EXPORTED,
+                        progressStage = "Exported successfully.",
+                        externalExportSuccess = true
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("Diagnostics", "Save failed", e)
+                _state.update { 
+                    it.copy(
+                        status = ExportStatus.FAILED,
+                        lastError = "Export Error: ${e.message}",
+                        progressStage = "Failed during file write.",
+                        externalExportSuccess = false
+                    )
+                }
             }
         }
     }
 
-    fun clearExportMessage() {
-        _exportMessage.value = null
-    }
-
-    fun getSnapshot(context: Context): IntentExperimentSnapshot {
-        val snapshot = repo.createSnapshot(context, _spec.value, _candidates.value, _launchTests.value)
-        val hashInput = "${snapshot.spec.templateId}-${snapshot.candidates.size}-${snapshot.launchTests.map { it.status }}"
-        val hash = md5(hashInput).take(6)
-        return snapshot.copy(contentHashShort = hash)
-    }
-
-    fun exportAsCsv(context: Context) {
-        val snapshot = getSnapshot(context)
-        val csv = generateCsvData(snapshot)
-        _exportMessage.value = "CSV exported successfully:\n\n$csv"
-    }
-
-    fun exportAsJson(context: Context) {
-        val snapshot = getSnapshot(context)
-        val json = generateJsonData(snapshot)
-        _exportMessage.value = "JSON exported successfully:\n\n$json"
-    }
-
-    private fun md5(input: String): String {
-        return try {
-            val md = MessageDigest.getInstance("MD5")
-            val bytes = md.digest(input.toByteArray())
-            bytes.joinToString("") { String.format("%02x", it) }
-        } catch (e: Exception) {
-            "000000"
-        }
-    }
-
-    private fun generateCsvData(snapshot: IntentExperimentSnapshot): String {
-        val sb = java.lang.StringBuilder()
-        sb.append("generated_at_epoch_millis,generated_at_iso8601,app_package_name,android_sdk_int,target_sdk_version,template_id,action,data_uri,mime_type,targeting_mode,candidate_count,content_hash\n")
-        sb.append("${snapshot.generatedAtEpochMillis},")
-        sb.append("${snapshot.generatedAtIso8601},")
-        sb.append("${snapshot.appPackageName},")
-        sb.append("${snapshot.androidSdkInt},")
-        sb.append("${snapshot.targetSdkVersion},")
-        sb.append("${snapshot.spec.templateId},")
-        sb.append("${snapshot.spec.action},")
-        sb.append("${snapshot.spec.dataUri ?: ""},")
-        sb.append("${snapshot.spec.mimeType ?: ""},")
-        sb.append("${snapshot.spec.targetingMode},")
-        sb.append("${snapshot.candidates.size},")
-        sb.append("${snapshot.contentHashShort}\n")
-        return sb.toString()
-    }
-
-    private fun generateJsonData(snapshot: IntentExperimentSnapshot): String {
-        // Build raw JSON simply to avoid adding dependencies
-        val candidatesJson = snapshot.candidates.joinToString(",", "[", "]") { cand ->
-            """{"packageName":"${cand.packageName}","activityName":"${cand.activityName}","label":"${cand.label ?: ""}","exported":${cand.exported},"enabled":${cand.enabled}}"""
-        }
-        val recordsJson = snapshot.launchTests.joinToString(",", "[", "]") { rec ->
-            """{"mode":"${rec.mode}","status":"${rec.status}","errorClass":"${rec.errorClass ?: ""}","errorMessage":"${rec.errorMessage ?: ""}"}"""
-        }
-        return """{
-  "generatedAtIso8601": "${snapshot.generatedAtIso8601}",
-  "appPackageName": "${snapshot.appPackageName}",
-  "androidSdkInt": ${snapshot.androidSdkInt},
-  "targetSdkVersion": ${snapshot.targetSdkVersion},
-  "templateId": "${snapshot.spec.templateId}",
-  "action": "${snapshot.spec.action}",
-  "dataUri": "${snapshot.spec.dataUri ?: ""}",
-  "mimeType": "${snapshot.spec.mimeType ?: ""}",
-  "targetingMode": "${snapshot.spec.targetingMode}",
-  "candidates": $candidatesJson,
-  "launchTests": $recordsJson,
-  "contentHash": "${snapshot.contentHashShort}"
-}"""
-    }
-
-    private fun createDefaultSpec(templateId: IntentTemplateId): IntentExperimentSpec {
-        return when (templateId) {
-            IntentTemplateId.VIEW_HTTPS_URL -> {
-                IntentExperimentSpec(
-                    templateId = IntentTemplateId.VIEW_HTTPS_URL,
-                    action = "android.intent.action.VIEW",
-                    dataUri = "https://example.com/",
-                    mimeType = null,
-                    categories = emptyList(),
-                    extras = emptyList(),
-                    targetingMode = TargetingMode.IMPLICIT,
-                    targetPackageName = null,
-                    targetActivityName = null
-                )
-            }
-            IntentTemplateId.SEND_TEXT_PLAIN -> {
-                IntentExperimentSpec(
-                    templateId = IntentTemplateId.SEND_TEXT_PLAIN,
-                    action = "android.intent.action.SEND",
-                    dataUri = null,
-                    mimeType = "text/plain",
-                    categories = emptyList(),
-                    extras = listOf(
-                        IntentExtraSpec("android.intent.extra.TEXT", "String", "https://example.com/"),
-                        IntentExtraSpec("android.intent.extra.SUBJECT", "String", "Intent experiment")
-                    ),
-                    targetingMode = TargetingMode.IMPLICIT,
-                    targetPackageName = null,
-                    targetActivityName = null
-                )
-            }
-        }
+    fun saveReportToFile(context: Context, uri: Uri) {
+        exportLastInternalReportToUri(context, uri)
     }
 }
+
 

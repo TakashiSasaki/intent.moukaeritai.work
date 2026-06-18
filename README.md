@@ -1,21 +1,25 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Intent Surface Explorer
 
-# Run and deploy your AI Studio app
+A non-destructive Intent surface discovery and export tool for Android.
 
-This contains everything you need to run your app locally.
+## Overview
+This app discovers which activities in other apps are visible and potentially callable through Intents. It builds a diagnostic report representing this "surface" and exports it as an exchangeable, validator-checkable JSON document.
 
-View your app in AI Studio: https://ai.studio/apps/7016b1aa-2953-4d5d-b080-97da53f27fa5
+## Schema Versioning
+- **Current JSON Schema**: V5 (`intent-surface-report.schema.v5`)
+- **JSON Validation**: The app enforces strict Kotlin semantic validation prior to generating exports, checking Android-specific consistency constraints.
+- **Consumer Artifacts**: The generated report features the `intent_invocation_catalog`, which is the preferred consumer-facing section for launcher-like apps.
 
-## Run Locally
+## Safety & Non-Destructive Behavior
+- The app discovers intents using PackageManager queries (`resolveActivity`, `queryIntentActivities`), explicit checks on component logic, and targeted package assessment. 
+- The app **does not execute `startActivity()`**.
+- Within reports, findings indicate explicit static checks like `EXPLICIT_COMPONENT_STATIC_OK` rather than confirmed successful launches.
+- Status values explicitly flag elements using `START_ACTIVITY_NOT_TESTED`.
 
-**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
+## Privacy Warning
+Generated reports contain comprehensive app inventories specific to the user's device and should be treated as sensitive diagnostic artifacts. Real generated JSON files must **never be committed to source control**. The app disables `allowBackup` to ensure device intent reports are not backed up.
 
-
-1. Open Android Studio
-2. Select **Open** and choose the directory containing this project
-3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
+## Development
+- Uses Kotlin and Jetpack Compose.
+- **DO NOT** commit real device reports as fixtures.
+- To test the semantic validator, generate mock reports inside test resources `app/src/test/resources/fixtures/`.

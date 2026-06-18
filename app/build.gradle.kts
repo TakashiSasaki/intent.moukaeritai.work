@@ -1,3 +1,10 @@
+import java.util.Properties
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
@@ -5,6 +12,41 @@ plugins {
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
 }
+
+val versionPropsFile = rootProject.file("version.properties")
+val versionProps = Properties()
+if (versionPropsFile.exists()) {
+    versionProps.load(FileInputStream(versionPropsFile))
+}
+val appVersionCode = versionProps.getProperty("VERSION_CODE", "1").toInt()
+val appVersionName = versionProps.getProperty("VERSION_NAME", "1.1")
+
+fun fetchGitCommitShort(providers: org.gradle.api.provider.ProviderFactory): String {
+    return try {
+        providers.exec {
+            commandLine("git", "rev-parse", "--short", "HEAD")
+            isIgnoreExitValue = true
+        }.standardOutput.asText.get().trim().takeIf { it.isNotEmpty() } ?: "unknown"
+    } catch (e: Exception) {
+        "unknown"
+    }
+}
+
+fun fetchGitCommitFull(providers: org.gradle.api.provider.ProviderFactory): String {
+    return try {
+        providers.exec {
+            commandLine("git", "rev-parse", "HEAD")
+            isIgnoreExitValue = true
+        }.standardOutput.asText.get().trim().takeIf { it.isNotEmpty() } ?: "unknown"
+    } catch (e: Exception) {
+        "unknown"
+    }
+}
+
+val currentBuildTimeUtc = DateTimeFormatter.ISO_INSTANT.format(Instant.now().atOffset(ZoneOffset.UTC))
+val gitCommitShort = fetchGitCommitShort(providers)
+val gitCommitFull = fetchGitCommitFull(providers)
+val jsonReportSchemaVersion = "5"
 
 android {
   namespace = "packagelist.android.moukaeritai.work"
@@ -14,10 +56,17 @@ android {
     applicationId = "packagelist.android.moukaeritai.work"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.1"
+    versionCode = appVersionCode
+    versionName = appVersionName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    
+    buildConfigField("int", "APP_VERSION_CODE", "$appVersionCode")
+    buildConfigField("String", "APP_VERSION_NAME", "\"$appVersionName\"")
+    buildConfigField("String", "BUILD_TIME_UTC", "\"$currentBuildTimeUtc\"")
+    buildConfigField("String", "GIT_COMMIT_SHORT", "\"$gitCommitShort\"")
+    buildConfigField("String", "GIT_COMMIT_FULL", "\"$gitCommitFull\"")
+    buildConfigField("int", "JSON_REPORT_SCHEMA_VERSION", jsonReportSchemaVersion)
   }
 
   signingConfigs {

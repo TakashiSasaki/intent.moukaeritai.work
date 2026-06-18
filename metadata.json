@@ -1,6 +1,6 @@
 {
-  "name": "VisiblePackageList",
-  "description": "A developer utility to inspect, display, and export visible Android packages to diagnostic CSV files.",
+  "name": "Intent Surface Explorer",
+  "description": "An Android diagnostic/research app for discovering which activities in other apps are visible and potentially callable through Intents.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

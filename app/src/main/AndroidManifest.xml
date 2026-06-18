@@ -3,19 +3,43 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <queries>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="https" />
-        </intent>
+        <!-- WEB_LINK -->
+        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="http" /></intent>
+        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>
+        
+        <!-- FILE_VIEW -->
+        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="content" /></intent>
+        <intent><action android:name="android.intent.action.VIEW" /><data android:mimeType="*/*" /></intent>
 
-        <intent>
-            <action android:name="android.intent.action.SEND" />
-            <data android:mimeType="text/plain" />
-        </intent>
+        <!-- SHARE -->
+        <intent><action android:name="android.intent.action.SEND" /><data android:mimeType="*/*" /></intent>
+        <intent><action android:name="android.intent.action.SEND_MULTIPLE" /><data android:mimeType="*/*" /></intent>
+
+        <!-- DOCUMENT_PICKER -->
+        <intent><action android:name="android.intent.action.GET_CONTENT" /><data android:mimeType="*/*" /></intent>
+        <intent><action android:name="android.intent.action.OPEN_DOCUMENT" /><data android:mimeType="*/*" /></intent>
+        <intent><action android:name="android.intent.action.CREATE_DOCUMENT" /><data android:mimeType="*/*" /></intent>
+
+        <!-- COMMUNICATION -->
+        <intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="mailto" /></intent>
+        <intent><action android:name="android.intent.action.DIAL" /><data android:scheme="tel" /></intent>
+
+        <!-- MAPS -->
+        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="geo" /></intent>
+
+        <!-- MARKET -->
+        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="market" /></intent>
+
+        <!-- SEARCH -->
+        <intent><action android:name="android.intent.action.WEB_SEARCH" /></intent>
+        <intent><action android:name="android.intent.action.SEARCH" /></intent>
+
+        <!-- MAIN_SELECTOR -->
+        <intent><action android:name="android.intent.action.MAIN" /></intent>
     </queries>
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -23,6 +47,16 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
         <activity
             android:name="packagelist.android.moukaeritai.work.MainActivity"
             android:exported="true"
