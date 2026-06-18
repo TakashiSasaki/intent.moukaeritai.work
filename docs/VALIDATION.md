@@ -28,7 +28,7 @@ To ensure generated reports are robust and safe, validation is handled in two di
 
 ## 2. Dev & CI Verification Flow (Ajv CLI)
 
-To check structural validity using the Ajv CLI:
+To check structural validity using the Ajv CLI under JSON Schema Draft 2020-12, execute:
 
 ```bash
 npx ajv-cli validate \
@@ -38,9 +38,35 @@ npx ajv-cli validate \
   -d docs/fixtures/android-intent-surface-report.v5.minimal.valid.json
 ```
 
+### Date-Time Format Handling
+The main schema uses `format: "date-time"` for the `generated_at_utc` field. If strict format validation is enabled in `ajv-cli` (without `--strict=false`), you must install and require `ajv-formats` or run validation with strict mode relaxed to ignore missing formats. Note that this validation is for developer tooling and CI workflows; it introduces no Android runtime dependencies.
+
 ---
 
-## 3. Fixture and Security Guidelines
+## 3. Schema Identity & Metadata Contracts
+
+The contracts enforce strict rules around schema identification, naming, and version tracking:
+
+- **Main Schema File**: `docs/schemas/android-intent-surface-report.schema.v5.json`
+- **Catalog Schema File**: `docs/schemas/intent-invocation-catalog.schema.v1.json`
+- **Main Schema ID**: `urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233`
+- **Catalog Schema ID**: `urn:uuid:6df4c0a0-10a1-4575-9952-4d9c4bb72c8f`
+
+### Absent Deprecated Fields (Strictly Removed)
+To reduce payload bloat and maintain a clean contract, we guarantee that the following legacy structures are **removed** and **not present** anywhere in the exported report or schemas:
+- `report_kind`
+- `catalog_kind`
+- `schema_semver`
+- `schema_family_id` (specifically in generated reports)
+
+### Dynamic Timestamps & History Tracking
+- **Schema Lifecycle**: Schema creation, modification, and lifecycle dates are managed and tracked purely through the git history as the definitive source of truth, rather than embedding hardcoded timestamps directly in the JSON Schema files.
+- **Instance Metadata**: Generated report timestamps (`generated_at_epoch_millis` and `generated_at_utc`) represent instance-specific run execution metadata and must remain intact to order reports correctly.
+
+---
+
+## 4. Fixture and Security Guidelines
 
 - **Sensitive Data Prohibited**: Real generated reports from real user devices contain sensitive information (package list inventory, personalized apps) and **must never** be checked in or committed to Git.
 - **Synthetic Fixtures**: Use fake, sanitized mock fixtures under `docs/fixtures/` for test specifications. Packages should use dummy prefixes like `com.example.viewer`.
+

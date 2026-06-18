@@ -54,16 +54,15 @@ Schema 5 より導入された `intent_invocation_catalog` は、サードパー
 
 出力された JSON レポートがスキーマ定義に 100% 準拠しているかをローカル環境で検証するには、以下の npm コマンドを使用してください。
 
-1. **AJV CLI ツールをグローバルまたはローカルにインストール:**
+1. **AJV CLI ツールを使用して検証を実行する場合:**
    ```bash
-   npm install -g ajv-cli
+   npx ajv-cli validate \
+     --spec=draft2020 \
+     -s docs/schemas/android-intent-surface-report.schema.v5.json \
+     -r docs/schemas/intent-invocation-catalog.schema.v1.json \
+     -d path/to/your_report.json
    ```
-
-2. **スキーマファイルを使用して JSON レポートを検証:**
-   ```bash
-   ajv validate -s docs/schemas/android-intent-surface-report.schema.v5.json -r docs/schemas/intent-invocation-catalog.schema.v1.json -d path/to/your_report.json
-   ```
-   *(`-r` フラグで参照先のカタログスキーマを同時に読み込みます。レポートが正しい場合は `YOUR_REPORT_FILE.json valid` と出力されます)*
+   *(`-r` フラグで参照先のカタログスキーマを同時に読み込み、`--spec=draft2020` で Draft 2020-12 仕様を指定します。レポートが正しい場合は `YOUR_REPORT_FILE.json valid` と出力されます)*
 
 ---
 

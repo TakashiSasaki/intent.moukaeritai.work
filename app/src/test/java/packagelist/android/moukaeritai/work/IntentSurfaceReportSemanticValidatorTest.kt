@@ -264,8 +264,8 @@ class IntentSurfaceReportSemanticValidatorTest {
         val adapter = moshi.adapter(IntentSurfaceReport::class.java)
         val jsonStr = adapter.toJson(report)
         
-        assertTrue(jsonStr.contains("\"schema_id\": \"urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233\""))
-        assertTrue(jsonStr.contains("\"schema_version\": 5"))
+        assertTrue(jsonStr.contains("\"schema_id\":\"urn:uuid:8a69ce28-18d7-4720-b78f-1ab11cc52233\""))
+        assertTrue(jsonStr.contains("\"schema_version\":5"))
         assertTrue(jsonStr.contains("\"intent_invocation_catalog\""))
         assertFalse(jsonStr.contains("\"report_kind\""))
         assertFalse(jsonStr.contains("\"schema_semver\""))
