@@ -30,6 +30,60 @@ class IntentSurfaceReportSemanticValidatorTest {
         )
     }
 
+    private fun createCandidate(
+        id: String,
+        setApi: String,
+        uri: String? = null,
+        mimeType: String? = null,
+        flags: List<String> = emptyList(),
+        grantFlags: List<String> = emptyList(),
+        requirements: List<IntentRuntimeRequirement> = emptyList(),
+        startActivityAttempted: Boolean = false,
+        launchResult: String = CatalogConstants.LAUNCH_NOT_TESTED,
+        autoLaunchAllowed: Boolean = false
+    ) = IntentInvocationCandidate(
+        candidate_id = id,
+        source_probe_id = "test_probe",
+        source_family = "test_family",
+        display_label = "Test Label",
+        target = IntentInvocationTarget("com.example.viewer", "com.example.viewer.MainActivity", "com.example.viewer/com.example.viewer.MainActivity"),
+        intent_recipe = IntentInvocationRecipe(
+            targeting_mode = "COMPONENT_EXPLICIT",
+            construction_api = "setComponent",
+            action = "android.intent.action.VIEW",
+            data = IntentInvocationData(
+                set_api = setApi,
+                uri = uri,
+                uri_kind = "URL",
+                scheme = "https",
+                display_redacted = uri,
+                mime_type = mimeType
+            ),
+            categories = emptyList(),
+            extras = emptyList(),
+            clip_data = null,
+            flags = flags,
+            grant_flags = grantFlags,
+            runtime_requirements = requirements
+        ),
+        evidence = IntentInvocationEvidence(
+            implicit_resolution_observed = true,
+            implicit_evidence_status = "IMPLICIT_CANDIDATE_OBSERVED",
+            implicit_probe_candidate_index = 0,
+            package_targeted_resolution_status = null,
+            component_static_assessment = "EXPLICIT_COMPONENT_STATIC_OK",
+            start_activity_attempted = startActivityAttempted,
+            launch_result = launchResult
+        ),
+        safety = IntentInvocationSafety(
+            auto_launch_allowed = autoLaunchAllowed,
+            requires_user_confirmation = true,
+            side_effect_level = "MAY_OPEN_EXTERNAL_APP",
+            notes = emptyList()
+        )
+    )
+
+    // 8. Semantic validator accepts a minimal valid schema 5 report with catalog.
     @Test
     fun testValidSchema() {
         val validator = IntentSurfaceReportSemanticValidator()
@@ -51,23 +105,104 @@ class IntentSurfaceReportSemanticValidatorTest {
         assertTrue(result.errors.any { it.contains("intent_invocation_catalog is missing") })
     }
 
+    // 9. Semantic validator rejects fake executable URI placeholders.
     @Test
-    fun testInvalidLaunchAttempted() {
-        val candidate = IntentInvocationCandidate(
-            "id_1", "probe_1", "family", "label",
-            IntentInvocationTarget("pkg", "act", "pkg/act"),
-            IntentInvocationRecipe("COMPONENT_EXPLICIT", "setComponent", null, IntentInvocationData("none", null,"NONE",null,null,null), emptyList(), emptyList(), null, emptyList(), emptyList()),
-            IntentInvocationEvidence(true, "status", 0, "status", "status", true, "FOO"),
-            IntentInvocationSafety(true, true, "UNKNOWN", emptyList())
-        )
-        val catalog = IntentInvocationCatalog(candidate_count = 1, candidates = listOf(candidate))
+    fun testValidatorRejectsFakePlaceholder() {
+        val validator = IntentSurfaceReportSemanticValidator()
+        val mockCand = createCandidate("cand.fake", "setData", uri = "content://example")
+        val catalog = IntentInvocationCatalog(candidate_count = 1, candidates = listOf(mockCand))
         val report = createMinimalReport(catalog)
         
-        val validator = IntentSurfaceReportSemanticValidator()
         val result = validator.validate(report)
         assertFalse(result.isValid)
-        assertTrue(result.errors.any { it.contains("start_activity_attempted must be false") })
-        assertTrue(result.errors.any { it.contains("launch_result must be START_ACTIVITY_NOT_TESTED") })
-        assertTrue(result.errors.any { it.contains("auto_launch_allowed must be false") })
+        assertTrue(result.errors.any { it.contains("cannot use fake/redacted URI placeholder") })
+    }
+
+    // 10. Semantic validator rejects invalid "data.set_api" combinations.
+    @Test
+    fun testValidatorRejectsInvalidSetApiCombinations() {
+        val validator = IntentSurfaceReportSemanticValidator()
+        
+        // setData but URI is null
+        val cand1 = createCandidate("cand.setDataErr", "setData", uri = null)
+        val report1 = createMinimalReport(IntentInvocationCatalog(candidate_count = 1, candidates = listOf(cand1)))
+        val res1 = validator.validate(report1)
+        assertFalse(res1.isValid)
+        assertTrue(res1.errors.any { it.contains("setData implies URI is non-null") })
+
+        // none but URI is present
+        val cand2 = createCandidate("cand.noneErr", "none", uri = "https://example.com/")
+        val report2 = createMinimalReport(IntentInvocationCatalog(candidate_count = 1, candidates = listOf(cand2)))
+        val res2 = validator.validate(report2)
+        assertFalse(res2.isValid)
+        assertTrue(res2.errors.any { it.contains("none implies both URI and MIME are null") })
+    }
+
+    // 11. Semantic validator rejects missing runtime requirement for runtime-provided data.
+    @Test
+    fun testValidatorRejectsMissingRuntimeRequirementsForRuntimeProvidedData() {
+        val validator = IntentSurfaceReportSemanticValidator()
+        
+        val cand = createCandidate("cand.runtimeErr", "runtimeProvidedData", uri = null, requirements = emptyList())
+        val report = createMinimalReport(IntentInvocationCatalog(candidate_count = 1, candidates = listOf(cand)))
+        val res = validator.validate(report)
+        
+        assertFalse(res.isValid)
+        assertTrue(res.errors.any { it.contains("runtimeProvidedData requires matching runtime_requirements") })
+    }
+
+    // 12. Semantic validator rejects unknown flags.
+    @Test
+    fun testValidatorRejectsUnknownFlags() {
+        val validator = IntentSurfaceReportSemanticValidator()
+        
+        val cand = createCandidate("cand.flagErr", "none", flags = listOf("FLAG_ACTIVITY_NEW_TASK", "SOME_INVALID_FLAG"))
+        val report = createMinimalReport(IntentInvocationCatalog(candidate_count = 1, candidates = listOf(cand)))
+        val res = validator.validate(report)
+        
+        assertFalse(res.isValid)
+        assertTrue(res.errors.any { it.contains("Invalid recipe flag") })
+    }
+
+    // 13. Semantic validator rejects "auto_launch_allowed = true".
+    @Test
+    fun testValidatorRejectsAutoLaunchAllowedTrue() {
+        val validator = IntentSurfaceReportSemanticValidator()
+        
+        val cand = createCandidate("cand.autoLaunchErr", "none", autoLaunchAllowed = true)
+        val report = createMinimalReport(IntentInvocationCatalog(candidate_count = 1, candidates = listOf(cand)))
+        val res = validator.validate(report)
+        
+        assertFalse(res.isValid)
+        assertTrue(res.errors.any { it.contains("auto_launch_allowed must be false") })
+    }
+
+    // 14. Semantic validator rejects "start_activity_attempted = true".
+    @Test
+    fun testValidatorRejectsStartActivityAttemptedTrue() {
+        val validator = IntentSurfaceReportSemanticValidator()
+        
+        val cand = createCandidate("cand.startAttemptErr", "none", startActivityAttempted = true)
+        val report = createMinimalReport(IntentInvocationCatalog(candidate_count = 1, candidates = listOf(cand)))
+        val res = validator.validate(report)
+        
+        assertFalse(res.isValid)
+        assertTrue(res.errors.any { it.contains("start_activity_attempted must be false") })
+    }
+
+    // 15. Semantic validator error messages include actual candidate IDs.
+    @Test
+    fun testValidatorErrorMessagesIncludeActualCandidateIds() {
+        val validator = IntentSurfaceReportSemanticValidator()
+        val candId = "cand.mySpecialErrorId_123"
+        val cand = createCandidate(candId, "setData", uri = null)
+        val report = createMinimalReport(IntentInvocationCatalog(candidate_count = 1, candidates = listOf(cand)))
+        val res = validator.validate(report)
+        
+        assertFalse(res.isValid)
+        // Ensure error message interpolates the exact candidate ID
+        assertTrue(res.errors.any { it.contains(candId) })
+        // Ensure no literal "${candidate.candidate_id}" is emitted
+        assertFalse(res.errors.any { it.contains("\${candidate.candidate_id}") })
     }
 }

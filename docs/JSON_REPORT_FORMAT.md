@@ -45,5 +45,42 @@ Schema 5 より導入された `intent_invocation_catalog` は、サードパー
 
 ---
 
-## JSON Validation
-スキーマ 5 からは、アプリ内で Kotlin による厳密な Semantic Validation が実行されます。整合性エラーが検出された場合、内部保存はスキップされずとも、`ExportState` 上でエラーとしてカウントされ外部公開する前に気づくことが可能になります。JSON Schema 形式 (`docs/schemas/`) の定義も同梱されています。
+## JSON Validation & CLI Schema Check
+
+スキーマ 5 からは、アプリ内で Kotlin による厳密な Semantic Validation が実行されます。整合性エラーが検出された場合、外部への出力が制限され品質が保たれます。また、JSON Schema 形式 (`docs/schemas/`) の整合性を検証するための定義ファイルも同梱されています。
+
+### コマンドラインでの検証方法 (Node.js & ajv-cli)
+
+出力された JSON レポートがスキーマ定義に 100% 準拠しているかをローカル環境で検証するには、以下の npm コマンドを使用してください。
+
+1. **AJV CLI ツールをグローバルまたはローカルにインストール:**
+   ```bash
+   npm install -g ajv-cli
+   ```
+
+2. **スキーマファイルを使用して JSON レポートを検証:**
+   ```bash
+   ajv validate -s docs/schemas/intent-surface-report.schema.v5.json -r docs/schemas/intent-invocation-catalog.schema.v1.json -d path/to/your_report.json
+   ```
+   *(`-r` フラグで参照先のカタログスキーマを同時に読み込みます。レポートが正しい場合は `YOUR_REPORT_FILE.json valid` と出力されます)*
+
+---
+
+## カタログ構造の安全対策と `runtime_requirements`
+
+外部インフラでの誤動作を防ぐため、`intent_recipe` は以下の安全基準を満たします：
+
+- **`data.set_api`**: インテント生成時の API 呼び出し方法を明示します。
+  - `setData`: 直接指定可能な、不変で安全な URI（例: `https://...`）が存在する場合。
+  - `setType`: MIME タイプのみを適用し、URI は指定しない場合。
+  - `setDataAndType`: 安全な不変 URI と MIME タイプを両方適用する場合。
+  - `runtimeProvidedData` または `runtimeProvidedDataAndType`: 検出された URI がプレースホルダー（例： `content://com.example.fileprovider/file` 等）や一時的・コンテキスト依存（`content://`）のものである場合。この場合不完全な URI は埋め込まず、代わりに `runtime_requirements` が追加されます。
+  - `none`: データ指定が不要な場合。
+
+- **`runtime_requirements` (Runtime Requirements)**:
+  `data.set_api` を安全に処理するために、起動側のアクションにおいて実行時に要求されるリソースを定義します。
+  - `requirement_type`: `GENERATED_TEMP_CONTENT_URI` / `USER_SELECTED_CONTENT_URI` / `CALLER_SUPPLIED_CONTENT_URI` / `UNKNOWN_RUNTIME_VALUE`
+  - `expected_value_type`: `URI_STRING` / `URI_STRING_ARRAY` / `UNKNOWN`
+  - `required`: 起動に不可欠かどうか（`true` / `false`）
+
+---

@@ -1,67 +1,380 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "work.moukaeritai.intent-invocation-catalog.schema.v1",
+  "title": "Intent Invocation Catalog Schema",
   "type": "object",
   "properties": {
-    "catalog_schema_version": { "type": "integer" },
-    "catalog_kind": { "type": "string" },
-    "candidate_count": { "type": "integer" },
+    "catalog_schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "catalog_kind": {
+      "type": "string",
+      "enum": ["moukaeritai.intent_invocation_catalog"]
+    },
+    "candidate_count": {
+      "type": "integer",
+      "minimum": 0
+    },
     "candidates": {
       "type": "array",
-      "items": { "$ref": "#/$defs/IntentInvocationCandidate" }
+      "items": {
+        "$ref": "#/$defs/IntentInvocationCandidate"
+      }
     }
   },
-  "required": ["catalog_schema_version", "catalog_kind", "candidate_count", "candidates"],
+  "required": [
+    "catalog_schema_version",
+    "catalog_kind",
+    "candidate_count",
+    "candidates"
+  ],
+  "additionalProperties": false,
   "$defs": {
     "IntentInvocationCandidate": {
       "type": "object",
       "properties": {
-        "candidate_id": { "type": "string" },
-        "source_probe_id": { "type": "string" },
-        "source_family": { "type": "string" },
-        "display_label": { "type": "string" },
+        "candidate_id": {
+          "type": "string"
+        },
+        "source_probe_id": {
+          "type": "string"
+        },
+        "source_family": {
+          "type": "string"
+        },
+        "display_label": {
+          "type": "string"
+        },
         "target": {
           "type": "object",
           "properties": {
-            "package_name": { "type": "string" },
-            "activity_name": { "type": "string" },
-            "component_name": { "type": "string" }
+            "package_name": {
+              "type": "string"
+            },
+            "activity_name": {
+              "type": "string"
+            },
+            "component_name": {
+              "type": "string"
+            }
           },
-          "required": ["package_name", "activity_name", "component_name"]
+          "required": [
+            "package_name",
+            "activity_name",
+            "component_name"
+          ],
+          "additionalProperties": false
         },
         "intent_recipe": {
           "type": "object",
           "properties": {
-            "targeting_mode": { "type": "string" },
-            "construction_api": { "type": "string" },
-            "action": { "type": ["string", "null"] },
+            "targeting_mode": {
+              "type": "string",
+              "enum": [
+                "COMPONENT_EXPLICIT",
+                "PACKAGE_TARGETED",
+                "IMPLICIT"
+              ]
+            },
+            "construction_api": {
+              "type": "string",
+              "enum": [
+                "setComponent",
+                "setPackage",
+                "implicit"
+              ]
+            },
+            "action": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "data": {
               "type": "object",
               "properties": {
-                "set_api": { "enum": ["setData", "setType", "setDataAndType", "none"] }
+                "set_api": {
+                  "type": "string",
+                  "enum": [
+                    "setData",
+                    "setType",
+                    "setDataAndType",
+                    "runtimeProvidedData",
+                    "runtimeProvidedDataAndType",
+                    "none"
+                  ]
+                },
+                "uri": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "uri_kind": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "scheme": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "display_redacted": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "mime_type": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
               },
-              "required": ["set_api"]
+              "required": [
+                "set_api",
+                "uri",
+                "uri_kind",
+                "scheme",
+                "display_redacted",
+                "mime_type"
+              ],
+              "additionalProperties": false
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "extras": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "value_type": {
+                    "type": "string",
+                    "enum": [
+                      "STRING",
+                      "STRING_ARRAY",
+                      "BOOLEAN",
+                      "INT",
+                      "LONG",
+                      "FLOAT",
+                      "URI_STRING",
+                      "URI_STRING_ARRAY",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "notes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "key",
+                  "value_type",
+                  "notes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "clip_data": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "flags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "FLAG_ACTIVITY_NEW_TASK",
+                  "FLAG_ACTIVITY_CLEAR_TOP",
+                  "FLAG_ACTIVITY_SINGLE_TOP"
+                ]
+              }
+            },
+            "grant_flags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "FLAG_GRANT_READ_URI_PERMISSION",
+                  "FLAG_GRANT_WRITE_URI_PERMISSION",
+                  "FLAG_GRANT_PERSISTABLE_URI_PERMISSION",
+                  "FLAG_GRANT_PREFIX_URI_PERMISSION"
+                ]
+              }
+            },
+            "runtime_requirements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "requirement_type": {
+                    "type": "string",
+                    "enum": [
+                      "GENERATED_TEMP_CONTENT_URI",
+                      "USER_SELECTED_CONTENT_URI",
+                      "CALLER_SUPPLIED_CONTENT_URI",
+                      "UNKNOWN_RUNTIME_VALUE"
+                    ]
+                  },
+                  "expected_value_type": {
+                    "type": "string",
+                    "enum": [
+                      "URI_STRING",
+                      "URI_STRING_ARRAY",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "notes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "requirement_type",
+                  "expected_value_type",
+                  "required",
+                  "notes"
+                ],
+                "additionalProperties": false
+              }
             }
           },
-          "required": ["targeting_mode", "construction_api", "data"]
+          "required": [
+            "targeting_mode",
+            "construction_api",
+            "action",
+            "data",
+            "categories",
+            "extras",
+            "clip_data",
+            "flags",
+            "grant_flags",
+            "runtime_requirements"
+          ],
+          "additionalProperties": false
         },
         "evidence": {
           "type": "object",
           "properties": {
-            "start_activity_attempted": { "enum": [false] },
-            "launch_result": { "enum": ["START_ACTIVITY_NOT_TESTED"] }
+            "implicit_resolution_observed": {
+              "type": "boolean"
+            },
+            "implicit_evidence_status": {
+              "type": [
+                "string",
+                "null"
+              ]
+                },
+            "implicit_probe_candidate_index": {
+              "type": "integer"
+            },
+            "package_targeted_resolution_status": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "component_static_assessment": {
+              "type": "string",
+              "enum": [
+                "EXPLICIT_COMPONENT_STATIC_OK",
+                "EXPLICIT_COMPONENT_DISABLED",
+                "EXPLICIT_COMPONENT_NOT_EXPORTED",
+                "EXPLICIT_COMPONENT_REQUIRES_PERMISSION",
+                "EXPLICIT_COMPONENT_MISSING",
+                "UNKNOWN"
+              ]
+            },
+            "start_activity_attempted": {
+              "type": "boolean",
+              "enum": [false]
+            },
+            "launch_result": {
+              "type": "string",
+              "enum": ["START_ACTIVITY_NOT_TESTED"]
+            }
           },
-          "required": ["start_activity_attempted", "launch_result"]
+          "required": [
+            "implicit_resolution_observed",
+            "implicit_evidence_status",
+            "implicit_probe_candidate_index",
+            "package_targeted_resolution_status",
+            "component_static_assessment",
+            "start_activity_attempted",
+            "launch_result"
+          ],
+          "additionalProperties": false
         },
         "safety": {
           "type": "object",
           "properties": {
-            "auto_launch_allowed": { "enum": [false] }
+            "auto_launch_allowed": {
+              "type": "boolean",
+              "enum": [false]
+            },
+            "requires_user_confirmation": {
+              "type": "boolean",
+              "enum": [true]
+            },
+            "side_effect_level": {
+              "type": "string",
+              "enum": [
+                "UNKNOWN",
+                "MAY_OPEN_EXTERNAL_APP",
+                "MAY_SHOW_CHOOSER",
+                "MAY_REQUIRE_USER_INPUT",
+                "MAY_SEND_SHARE_DATA",
+                "MAY_MODIFY_STATE"
+              ]
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           },
-          "required": ["auto_launch_allowed"]
+          "required": [
+            "auto_launch_allowed",
+            "requires_user_confirmation",
+            "side_effect_level",
+            "notes"
+          ],
+          "additionalProperties": false
         }
       },
-      "required": ["candidate_id", "target", "intent_recipe", "evidence", "safety"]
+      "required": [
+        "candidate_id",
+        "source_probe_id",
+        "source_family",
+        "display_label",
+        "target",
+        "intent_recipe",
+        "evidence",
+        "safety"
+      ],
+      "additionalProperties": false
     }
   }
 }

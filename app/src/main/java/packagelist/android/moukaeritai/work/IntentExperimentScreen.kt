@@ -68,7 +68,10 @@ fun IntentExperimentScreen(viewModel: IntentExperimentViewModel) {
                 onClick = { 
                     state.fileName?.let { createDocumentLauncher.launch(it) }
                 },
-                enabled = state.status != ExportStatus.RUNNING && state.status != ExportStatus.EXPORTING && state.fileName != null,
+                enabled = state.status != ExportStatus.RUNNING &&
+                        state.status != ExportStatus.EXPORTING &&
+                        state.isInternalFileAvailable &&
+                        state.internalPath != null,
                 modifier = Modifier.weight(1f).height(48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF009900)),
                 contentPadding = PaddingValues(4.dp)

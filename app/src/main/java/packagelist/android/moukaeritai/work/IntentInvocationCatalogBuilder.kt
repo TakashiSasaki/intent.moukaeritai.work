@@ -21,25 +21,86 @@ class IntentInvocationCatalogBuilder {
                     component_name = candidate.component_name
                 )
                 
-                val dataApiAndUri = determineDataApi(spec)
-                val setApi = dataApiAndUri.first
+                val displayRedacted = spec.data_display_redacted
+                val scheme = spec.data_scheme
+                val isSafe = isUriExecutableAndSafe(scheme, displayRedacted)
+                
+                val hasUriInput = spec.data_uri_kind != null && spec.data_uri_kind != "NONE"
+                val hasMimeInput = spec.mime_type != null
+                
+                val setApi = when {
+                    hasUriInput -> {
+                        if (isSafe) {
+                            if (hasMimeInput) CatalogConstants.SET_API_SET_DATA_AND_TYPE
+                            else CatalogConstants.SET_API_SET_DATA
+                        } else {
+                            if (hasMimeInput) CatalogConstants.SET_API_RUNTIME_PROVIDED_DATA_AND_TYPE
+                            else CatalogConstants.SET_API_RUNTIME_PROVIDED_DATA
+                        }
+                    }
+                    hasMimeInput -> CatalogConstants.SET_API_SET_TYPE
+                    else -> CatalogConstants.SET_API_NONE
+                }
+                
+                val finalUri = if (isSafe) displayRedacted else null
+                
+                val runtimeRequirements = mutableListOf<IntentRuntimeRequirement>()
+                if (setApi == CatalogConstants.SET_API_RUNTIME_PROVIDED_DATA || setApi == CatalogConstants.SET_API_RUNTIME_PROVIDED_DATA_AND_TYPE) {
+                    val reqType = when (spec.data_uri_kind) {
+                        "FILE_PROVIDER_CONTENT_URI" -> CatalogConstants.REQ_GENERATED_TEMP_URI
+                        "USER_SELECTED" -> CatalogConstants.REQ_USER_SELECTED_URI
+                        else -> CatalogConstants.REQ_CALLER_SUPPLIED_URI
+                    }
+                    runtimeRequirements.add(
+                        IntentRuntimeRequirement(
+                            requirement_type = reqType,
+                            key = null,
+                            required = true,
+                            expected_value_type = CatalogConstants.VAL_TYPE_URI_STRING,
+                            uri_kind = spec.data_uri_kind,
+                            mime_type = spec.mime_type,
+                            grant_flags = extractGrantFlags(spec.intent_flags_labels),
+                            description = "Consumer must provide a suitable content URI of kind ${spec.data_uri_kind ?: "generic"}."
+                        )
+                    )
+                }
+
+                val extrasList = buildExtras(spec.extras_schema)
+                // If any extra mapped to UNKNOWN, add a requirement or prevent launch (auto_launch is already false)
+                val unknownExtras = extrasList.filter { it.value_type == CatalogConstants.EXTRA_TYPE_UNKNOWN }
+                if (unknownExtras.isNotEmpty()) {
+                    runtimeRequirements.add(
+                        IntentRuntimeRequirement(
+                            requirement_type = CatalogConstants.REQ_UNKNOWN_RUNTIME_VALUE,
+                            key = unknownExtras.joinToString(",") { it.key },
+                            required = false,
+                            expected_value_type = CatalogConstants.VAL_TYPE_UNKNOWN,
+                            uri_kind = null,
+                            mime_type = null,
+                            grant_flags = emptyList(),
+                            description = "Unknown extra keys detected: ${unknownExtras.map { it.key }}. Manual integration required."
+                        )
+                    )
+                }
+                
                 val recipe = IntentInvocationRecipe(
-                    targeting_mode = "COMPONENT_EXPLICIT",
-                    construction_api = "setComponent",
+                    targeting_mode = CatalogConstants.TARGETING_MODE_COMPONENT_EXPLICIT,
+                    construction_api = CatalogConstants.CONSTRUCTION_API_SET_COMPONENT,
                     action = action,
                     data = IntentInvocationData(
                         set_api = setApi,
-                        uri = if (setApi == "setData" || setApi == "setDataAndType") "content://example" else null, // Fallback if necessary or just use redacted
-                        uri_kind = spec.data_uri_kind ?: "NONE",
-                        scheme = spec.data_scheme,
-                        display_redacted = spec.data_display_redacted,
+                        uri = finalUri,
+                        uri_kind = spec.data_uri_kind ?: CatalogConstants.URI_KIND_NONE,
+                        scheme = scheme,
+                        display_redacted = displayRedacted,
                         mime_type = spec.mime_type
                     ),
                     categories = spec.categories,
-                    extras = buildExtras(spec.extras_schema),
+                    extras = extrasList,
                     clip_data = spec.clip_data_schema,
-                    flags = spec.intent_flags_labels,
-                    grant_flags = extractGrantFlags(spec.intent_flags_labels)
+                    flags = filterRecipeFlags(spec.intent_flags_labels),
+                    grant_flags = extractGrantFlags(spec.intent_flags_labels),
+                    runtime_requirements = runtimeRequirements
                 )
 
                 var packageStatus: String? = null
@@ -55,19 +116,23 @@ class IntentInvocationCatalogBuilder {
 
                 val evidence = IntentInvocationEvidence(
                     implicit_resolution_observed = true,
-                    implicit_evidence_status = "IMPLICIT_CANDIDATE_OBSERVED",
+                    implicit_evidence_status = CatalogConstants.EVIDENCE_IMPLICIT_OBSERVED,
                     implicit_probe_candidate_index = candidate.index,
                     package_targeted_resolution_status = packageStatus,
                     component_static_assessment = explicitStatus,
                     start_activity_attempted = false,
-                    launch_result = "START_ACTIVITY_NOT_TESTED"
+                    launch_result = CatalogConstants.LAUNCH_NOT_TESTED
                 )
 
+                val safetyNotes = mutableListOf("Static discovery only.")
+                if (unknownExtras.isNotEmpty()) {
+                    safetyNotes.add("Unknown extras detected. Auto-launch is unsafe.")
+                }
                 val safety = IntentInvocationSafety(
                     auto_launch_allowed = false,
                     requires_user_confirmation = true,
-                    side_effect_level = "MAY_OPEN_EXTERNAL_APP",
-                    notes = listOf("Static discovery only.")
+                    side_effect_level = CatalogConstants.SIDE_EFFECT_MAY_OPEN_EXTERNAL,
+                    notes = safetyNotes
                 )
 
                 candidates.add(
@@ -97,51 +162,91 @@ class IntentInvocationCatalogBuilder {
         return str.replace(Regex("[^a-zA-Z0-9_]"), "_")
     }
 
-    private fun determineDataApi(spec: IntentSpec): Pair<String, Boolean> {
-        val hasUri = spec.data_uri_kind != null && spec.data_uri_kind != "NONE"
-        val hasMime = spec.mime_type != null
+    private fun isUriExecutableAndSafe(scheme: String?, displayRedacted: String?): Boolean {
+        if (scheme == null || displayRedacted == null) return false
+        val lowerScheme = scheme.lowercase().trim()
+        val allowedSchemes = setOf("http", "https", "geo", "mailto", "tel", "market")
+        if (lowerScheme !in allowedSchemes) return false
         
-        return when {
-            hasUri && hasMime -> "setDataAndType" to true
-            hasUri -> "setData" to true
-            hasMime -> "setType" to false
-            else -> "none" to false
+        val lowerRedacted = displayRedacted.lowercase()
+        if (lowerRedacted.contains("redacted") || 
+            lowerRedacted.contains("[") || 
+            lowerRedacted.contains("<") || 
+            lowerRedacted.contains("*") ||
+            lowerRedacted.startsWith("placeholder")) {
+            return false
         }
+        return true
     }
     
     private fun buildExtras(schema: Map<String, String>): List<IntentInvocationExtra> {
         return schema.map { (key, type) ->
+            val mappedType = mapExtraType(type)
+            val notes = mutableListOf<String>()
+            if (mappedType == CatalogConstants.EXTRA_TYPE_UNKNOWN) {
+                notes.add("Note: Consumer must not auto-launch this candidate without additional handling for unknown extra type '$type'")
+            }
             IntentInvocationExtra(
                 key = key,
-                value_type = type.uppercase(), // assuming the previous code had types like "String", we upper-case them. Actually needs proper mapping.
+                value_type = mappedType,
                 value_source = "FIXED_DUMMY",
                 required = false,
                 example_value_redacted = null,
-                notes = emptyList()
+                notes = notes
             )
         }
     }
     
+    private fun mapExtraType(legacyType: String): String {
+        val norm = legacyType.trim().uppercase()
+        return when (norm) {
+            "STRING", "JAVA.LANG.STRING" -> CatalogConstants.EXTRA_TYPE_STRING
+            "STRING_ARRAY", "STRING[]", "[LJAVA.LANG.STRING;" -> CatalogConstants.EXTRA_TYPE_STRING_ARRAY
+            "BOOLEAN", "BOOL", "JAVA.LANG.BOOLEAN" -> CatalogConstants.EXTRA_TYPE_BOOLEAN
+            "INT", "INTEGER", "JAVA.LANG.INTEGER" -> CatalogConstants.EXTRA_TYPE_INT
+            "LONG", "JAVA.LANG.LONG" -> CatalogConstants.EXTRA_TYPE_LONG
+            "FLOAT", "DOUBLE", "JAVA.LANG.FLOAT", "JAVA.LANG.DOUBLE" -> CatalogConstants.EXTRA_TYPE_FLOAT
+            "URI", "URI_STRING", "ANDROID.NET.URI" -> CatalogConstants.EXTRA_TYPE_URI_STRING
+            "URI_ARRAY", "URI_STRING_ARRAY", "URI[]", "[LANDROID.NET.URI;" -> CatalogConstants.EXTRA_TYPE_URI_STRING_ARRAY
+            else -> CatalogConstants.EXTRA_TYPE_UNKNOWN
+        }
+    }
+    
+    private fun filterRecipeFlags(flags: List<String>): List<String> {
+        val allowed = setOf(
+            CatalogConstants.FLAG_ACTIVITY_NEW_TASK,
+            CatalogConstants.FLAG_ACTIVITY_CLEAR_TOP,
+            CatalogConstants.FLAG_ACTIVITY_SINGLE_TOP
+        )
+        return flags.filter { it in allowed }
+    }
+    
     private fun extractGrantFlags(flags: List<String>): List<String> {
-        return flags.filter { it.startsWith("FLAG_GRANT_") }
+        val allowed = setOf(
+            CatalogConstants.FLAG_GRANT_READ_URI_PERMISSION,
+            CatalogConstants.FLAG_GRANT_WRITE_URI_PERMISSION,
+            CatalogConstants.FLAG_GRANT_PERSISTABLE_URI_PERMISSION,
+            CatalogConstants.FLAG_GRANT_PREFIX_URI_PERMISSION
+        )
+        return flags.filter { it in allowed }
     }
     
     private fun mapPackageStatus(status: String): String {
         return when (status) {
-            "RESOLVABLE_DIRECT" -> "PACKAGE_TARGETED_RESOLVABLE_DIRECT"
-            "RESOLVABLE_VIA_RESOLVER" -> "PACKAGE_TARGETED_RESOLVABLE_VIA_RESOLVER"
-            "NOT_RESOLVABLE" -> "PACKAGE_TARGETED_NOT_RESOLVABLE"
-            else -> "PACKAGE_TARGETED_RESOLVABLE_OTHER"
+            "RESOLVABLE_DIRECT" -> CatalogConstants.PKG_RESOLVABLE_DIRECT
+            "RESOLVABLE_VIA_RESOLVER" -> CatalogConstants.PKG_RESOLVABLE_VIA_RESOLVER
+            "NOT_RESOLVABLE" -> CatalogConstants.PKG_NOT_RESOLVABLE
+            else -> CatalogConstants.PKG_RESOLVABLE_OTHER
         }
     }
     
     private fun mapComponentStatus(status: String): String {
         return when (status) {
-            "COMPONENT_SPEC_BUILT" -> "EXPLICIT_COMPONENT_STATIC_OK"
-            "DISABLED" -> "EXPLICIT_COMPONENT_DISABLED"
-            "NOT_EXPORTED" -> "EXPLICIT_COMPONENT_NOT_EXPORTED"
-            "REQUIRES_PERMISSION" -> "EXPLICIT_COMPONENT_REQUIRES_PERMISSION"
-            else -> "EXPLICIT_COMPONENT_STATIC_OK"
+            "COMPONENT_SPEC_BUILT" -> CatalogConstants.COMP_STATIC_OK
+            "DISABLED" -> CatalogConstants.COMP_DISABLED
+            "NOT_EXPORTED" -> CatalogConstants.COMP_NOT_EXPORTED
+            "REQUIRES_PERMISSION" -> CatalogConstants.COMP_REQUIRES_PERMISSION
+            else -> CatalogConstants.COMP_UNKNOWN // Unknown statuses fallback safely to UNKNOWN, not to COMP_STATIC_OK
         }
     }
 }

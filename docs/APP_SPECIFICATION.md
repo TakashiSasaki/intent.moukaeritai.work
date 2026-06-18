@@ -24,7 +24,7 @@ The app differentiates between implicit discovery and explicit intent components
 
 ## App Versioning
 - **Version Code**: Managed in `version.properties`. It is a monotonic internal build/release number. It must be manually bumped (`gradle bumpVersionCode`) for changes.
-- **Version Name**: A human-readable app feature version (e.g. `0.6.0`). Managed in `version.properties`.
+- **Version Name**: A human-readable app feature version (e.g. `0.6.1`). Managed in `version.properties`.
 - **JSON Schema Version**: Currently V5. Exported files embed the schema version and app telemetry.
 
 ## Data Structures
