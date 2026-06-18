@@ -15,15 +15,20 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [36])
-class GreetingScreenshotTest {
+class IntentExperimentScreenshotTest {
 
   @get:Rule val composeTestRule = createComposeRule()
 
   @Test
-  fun greeting_screenshot() {
-    val viewModel = PackageListViewModel()
-    composeTestRule.setContent { MyApplicationTheme { PackageListScreen(viewModel = viewModel) } }
+  fun test_intent_experiment_screen_snapshot() {
+    // We need to inject a ViewModel or just create an instance.
+    // For screenshot test, we don't strictly need a functional VM, as long as it's not null.
+    // Since we are not actually resolving intents, we can use a dummy/empty VM if possible,
+    // or just pass a real one (as it's a unit test environment).
+    val viewModel = IntentExperimentViewModel()
+    
+    composeTestRule.setContent { MyApplicationTheme { IntentExperimentScreen(viewModel = viewModel) } }
 
-    composeTestRule.onRoot().captureRoboImage(filePath = "src/test/screenshots/greeting.png")
+    composeTestRule.onRoot().captureRoboImage(filePath = "src/test/screenshots/intent_experiment_snapshot.png")
   }
 }

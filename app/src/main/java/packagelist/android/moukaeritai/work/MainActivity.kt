@@ -77,18 +77,15 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: PackageListViewModel by viewModels()
+    private val viewModel: IntentExperimentViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Trigger initial package load
-        viewModel.loadPackages(applicationContext)
-
         setContent {
             MyApplicationTheme {
-                PackageListScreen(viewModel = viewModel)
+                IntentExperimentScreen(viewModel = viewModel)
             }
         }
     }

@@ -29,25 +29,25 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF0891B2), // Cyan 600
-    secondary = Color(0xFF0284C7), // Sky 600
-    tertiary = Color(0xFF059669), // Emerald 600
-    background = Color(0xFFF8FAFC),
-    surface = Color.White,
-    surfaceVariant = Color(0xFFEDF2F7),
-    outline = Color(0xFFE2E8F0),
+    primary = Color(0xFF0057D9),
+    secondary = Color(0xFF374151),
+    tertiary = Color(0xFF166534), // Success green
+    background = Color(0xFFFFFFFF),
+    surface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFFE5E7EB),
+    outline = Color(0xFF94A3B8), // Darker outline for readability
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
-    onBackground = Color(0xFF0F172A), // Slate 900
-    onSurface = Color(0xFF1E293B), // Slate 800
-    onSurfaceVariant = Color(0xFF64748B), // Slate 500
-    error = Color(0xFFE11D48) // Rose 600
+    onBackground = Color(0xFF111827),
+    onSurface = Color(0xFF111827),
+    onSurfaceVariant = Color(0xFF4B5563),
+    error = Color(0xFFB91C1C)
 )
 
 @Composable
 fun MyApplicationTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     dynamicColor: Boolean = false, // Set false to ensure our custom tailored branding shines, yet can be true on newer OS if preferred.
     content: @Composable () -> Unit,
 ) {
